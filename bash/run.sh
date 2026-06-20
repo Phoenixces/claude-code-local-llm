@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 MCP_CONFIG="$SCRIPT_DIR/../mcp-local.json"
 HF_CACHE="$HOME/.cache/huggingface/hub"
 
@@ -583,7 +583,7 @@ fi
 # =============================================================================
 # vllm-mlx is only needed when we run the model locally.
 if [[ -z "$REMOTE_URL" ]]; then
-    VLLM_BIN="$SCRIPT_DIR/../.venv/bin/vllm-mlx"
+    VLLM_BIN="$SCRIPT_DIR/.venv/bin/vllm-mlx"
     if [[ ! -x "$VLLM_BIN" ]]; then
         echo "${RED}ERROR: vllm-mlx not found in .venv. Run ./install.sh first.${RESET}"
         exit 1
@@ -756,6 +756,10 @@ CLAUDE_FLAGS=(
     # outside the list is auto-approved.
     --allowedTools "Bash,Read,Edit,Write,Glob,Grep,WebSearch,WebFetch"
     --append-system-prompt "$_WRITE_IN_PARTS_GUIDANCE"
+    # Override any ANTHROPIC_BASE_URL/AUTH_TOKEN baked into ~/.claude/settings.json
+    # (e.g. a corporate proxy). settings.json env block loads after the shell env,
+    # so env -u alone is not enough — --settings inline JSON wins last.
+    --settings "{\"env\":{\"ANTHROPIC_BASE_URL\":\"$BASE_URL\",\"ANTHROPIC_AUTH_TOKEN\":\"\",\"ANTHROPIC_API_KEY\":\"not-needed\",\"ANTHROPIC_MODEL\":\"$MODEL\",\"ANTHROPIC_DEFAULT_OPUS_MODEL\":\"$MODEL\",\"ANTHROPIC_DEFAULT_SONNET_MODEL\":\"$MODEL\",\"ANTHROPIC_DEFAULT_HAIKU_MODEL\":\"$MODEL\"}}"
 )
 
 # Disable thinking/reasoning tokens — Claude Code can't handle them
